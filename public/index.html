@@ -1,22 +1,110 @@
-async function saveToServer() {
-    const code = document.getElementById('codeEditor').value;
-    if (!code.trim()) return displayMessage('Empty', 'Add code first!', 'bg-yellow-600');
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Sandbox Launcher</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #000000; }
+        .code-editor { resize: none; tab-size: 4; }
+        .scroll-container::-webkit-scrollbar { width: 8px; }
+        .scroll-container::-webkit-scrollbar-thumb { background-color: #4b5563; border-radius: 4px; }
+        .scroll-container::-webkit-scrollbar-track { background-color: #374151; }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden">
 
-    const filename = prompt("Project Name:");
-    if (!filename) return;
-
-    try {
-        const response = await fetch('/save', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ filename, code })
-        });
-
-        const data = await response.json();
-        const fullUrl = `${window.location.origin}${data.url}`;
+    <header class="p-4 bg-black shadow-lg flex justify-between items-center z-10 border-b border-white/10">
+        <div class="flex items-center space-x-4">
+            <label for="fileUpload" class="cursor-pointer px-4 py-2 border border-white bg-black text-white font-mono rounded-lg hover:bg-gray-900 transition transform hover:scale-105">
+                Upload
+            </label>
+            <input type="file" id="fileUpload" accept=".html,.txt,.js,.css" class="hidden" onchange="handleFileUpload(event)">
+            
+            <button onclick="saveToServer()" class="px-4 py-2 border border-blue-500 bg-black text-blue-500 font-mono rounded-lg hover:bg-blue-900/20 transition transform hover:scale-105">
+                Save & Share
+            </button>
+        </div>
         
-        displayMessage('Live!', `Share this link: ${fullUrl}`, 'bg-green-600');
-    } catch (e) {
-        displayMessage('Error', 'Server connection failed.', 'bg-red-600');
-    }
-}
+        <button id="launchButton" class="px-6 py-2 border border-white bg-black text-white font-mono rounded-lg shadow-xl hover:bg-gray-900 transition transform hover:scale-105" onclick="launchCode()">
+            Launch
+        </button>
+    </header>
+
+    <div class="px-6 pt-2 pb-2 bg-black border-b border-white/20">
+        <span id="fileNameDisplay" class="text-white font-mono text-xs">File: None loaded.</span>
+    </div>
+
+    <main class="flex-grow overflow-hidden">
+        <textarea id="codeEditor" class="code-editor scroll-container w-full h-full p-6 text-sm font-mono text-white bg-black border-0 outline-none" placeholder="Type your code here..."></textarea>
+    </main>
+
+    <script>
+        const codeEditor = document.getElementById('codeEditor');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+
+        function launchCode() {
+            const userCode = codeEditor.value;
+            if (!userCode.trim()) return displayMessage('No Code Found', 'Please enter some code before launching.', 'bg-yellow-500');
+            const newWindow = window.open('about:blank', '_blank');
+            if (!newWindow) return displayMessage('Launch Failed', 'Please disable pop-up blockers.', 'bg-red-600');
+            newWindow.document.write(userCode);
+            newWindow.document.close();
+        }
+
+        async function saveToServer() {
+            const code = codeEditor.value;
+            if (!code.trim()) return displayMessage('Empty', 'Add some code first!', 'bg-yellow-600');
+
+            const filename = prompt("Project Name (e.g. my-cool-site):");
+            if (!filename) return;
+
+            try {
+                const response = await fetch('/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filename, code })
+                });
+                const data = await response.json();
+                const fullUrl = `${window.location.origin}${data.url}`;
+                displayMessage('Success!', `Link: ${fullUrl}`, 'bg-green-600');
+            } catch (err) {
+                displayMessage('Error', 'Could not connect to server.', 'bg-red-600');
+            }
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                codeEditor.value = e.target.result;
+                fileNameDisplay.textContent = `File: ${file.name}`;
+            };
+            reader.readAsText(file);
+        }
+
+        function displayMessage(title, message, bgColorClass) {
+            let messageBox = document.getElementById('messageBox');
+            if (!messageBox) {
+                messageBox = document.createElement('div');
+                messageBox.id = 'messageBox';
+                messageBox.className = 'fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50';
+                messageBox.innerHTML = `
+                    <div class="p-6 rounded-xl shadow-2xl max-w-sm w-full text-white" id="messageCard">
+                        <h3 class="text-xl font-bold mb-2" id="messageTitle"></h3>
+                        <p id="messageBody" class="mb-4 break-all"></p>
+                        <button onclick="document.getElementById('messageBox').style.display='none'" class="w-full py-2 rounded-lg bg-white text-black font-bold">Close</button>
+                    </div>`;
+                document.body.appendChild(messageBox);
+            }
+            document.getElementById('messageTitle').textContent = title;
+            document.getElementById('messageBody').textContent = message;
+            const card = document.getElementById('messageCard');
+            card.className = `p-6 rounded-xl shadow-2xl max-w-sm w-full text-white ${bgColorClass}`;
+            messageBox.style.display = 'flex';
+        }
+    </script>
+</body>
+</html>
