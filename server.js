@@ -8,7 +8,8 @@ const app = express();
 const uri = process.env.MONGO_URI; 
 const client = new MongoClient(uri);
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 // Serves the public folder (where index.html is)
 app.use(express.static(path.join(__dirname, 'public')));
 
