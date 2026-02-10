@@ -1,1 +1,22 @@
+async function saveToServer() {
+    const code = document.getElementById('codeEditor').value;
+    if (!code.trim()) return displayMessage('Empty', 'Add code first!', 'bg-yellow-600');
 
+    const filename = prompt("Project Name:");
+    if (!filename) return;
+
+    try {
+        const response = await fetch('/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename, code })
+        });
+
+        const data = await response.json();
+        const fullUrl = `${window.location.origin}${data.url}`;
+        
+        displayMessage('Live!', `Share this link: ${fullUrl}`, 'bg-green-600');
+    } catch (e) {
+        displayMessage('Error', 'Server connection failed.', 'bg-red-600');
+    }
+}
